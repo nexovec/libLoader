@@ -1,0 +1,17 @@
+**.sln
+**.vcxproj
+**.vcxproj.user
+**.pdb
+**.obj
+**.ilk
+**.log
+**.dll.recipe
+**.tlog
+**.dll
+SharedCode/bin/
+SharedCode/obj/
+SharedCode/.vs/
+MainApp/bin/
+MainApp/obj/
+MainApp/.vs/
+.vscode/
