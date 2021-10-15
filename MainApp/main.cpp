@@ -1,13 +1,43 @@
 #include <iostream>
 #include <windows.h>
 #include <stdint.h>
-#define FUNC_SIGNATURE(funcName) int funcName()
-typedef FUNC_SIGNATURE(funcType);
-FUNC_SIGNATURE(funcStub)
+
+#define SIGNATURE_OF_FUNC(functionName) int functionName()
+typedef SIGNATURE_OF_FUNC(funcType);
+SIGNATURE_OF_FUNC(funcStub)
 {
+    std::cout << "This is just a stub, this shouldn't run" << std::endl;
     return 0;
 }
-static funcType *func = funcStub;
+static funcType *exampleFunc = funcStub;
+
+// TODO: erase signatures
+#define SIGNATURE_OF_CBK(name) int name()
+typedef SIGNATURE_OF_CBK(cbk);
+SIGNATURE_OF_CBK(callbackFunction)
+{
+    std::cout << "I am the callback function" << std::endl;
+    return 0;
+}
+
+#define SIGNATURE_OF_SET_CBK(functionName) int functionName(cbk *)
+typedef SIGNATURE_OF_SET_CBK(setCbkType);
+SIGNATURE_OF_SET_CBK(setCbkStub)
+{
+    std::cout << "This is just a stub, this shouldn't run" << std::endl;
+    return 0;
+}
+static setCbkType *setCbk = setCbkStub;
+
+#define SIGNATURE_OF_RUN_ALL_CALLBACKS(functionName) int functionName()
+typedef SIGNATURE_OF_RUN_ALL_CALLBACKS(runAllCallbacksType);
+SIGNATURE_OF_RUN_ALL_CALLBACKS(runAllCallbacksStub)
+{
+    std::cout << "This is just a stub, this shouldn't run" << std::endl;
+    return 0;
+}
+static runAllCallbacksType *runAllCallbacks = runAllCallbacksStub;
+
 int main()
 {
     // load the dll
@@ -28,12 +58,35 @@ int main()
     }
 
     // load and call a function from the dll
-    func = reinterpret_cast<funcType *>(GetProcAddress(loadedLib, "exampleFunc"));
-    if (!func)
+    exampleFunc = reinterpret_cast<funcType *>(GetProcAddress(loadedLib, "exampleFunc"));
+    if (!exampleFunc)
     {
-        std::cout << "Couldn't load the dll function with error code " << GetLastError() << std::endl;
+        std::cout << "Couldn't load the dll function "
+                  << "exampleFunc"
+                  << " with error code " << GetLastError() << std::endl;
+        return -1;
     }
-    func();
+    exampleFunc();
 
-    // TODO: give a callback function to the dll
+    // pass a callback function to the dll
+    setCbk = reinterpret_cast<setCbkType *>(GetProcAddress(loadedLib, "setCbk"));
+    if (!setCbk)
+    {
+        std::cout << "Couldn't give callback "
+                  << "cbk"
+                  << " to the dll with error code " << GetLastError() << std::endl;
+        return -1;
+    }
+    setCbk(callbackFunction);
+
+    // run all callbacks in the dll
+    runAllCallbacks = reinterpret_cast<runAllCallbacksType *>(GetProcAddress(loadedLib, "runAllCallbacks"));
+    if (!runAllCallbacks)
+    {
+        std::cout << "Couldn't load the dll function "
+                  << "runAllCallbacks"
+                  << " with error code " << GetLastError() << std::endl;
+        return -1;
+    }
+    runAllCallbacks();
 }
