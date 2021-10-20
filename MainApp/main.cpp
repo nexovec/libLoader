@@ -3,8 +3,10 @@
 #include <stdint.h>
 #include <chrono>
 #include <thread>
+#include <filesystem>
+namespace fs = std::filesystem;
 
-#define SIGNATURE_OF_FUNC(functionName) int functionName()
+#define SIGNATURE_OF_FUNC(functionName) int32_t functionName()
 typedef SIGNATURE_OF_FUNC(funcType);
 SIGNATURE_OF_FUNC(funcStub)
 {
@@ -14,7 +16,7 @@ SIGNATURE_OF_FUNC(funcStub)
 static funcType *exampleFunc = funcStub;
 
 // TODO: erase signatures
-#define SIGNATURE_OF_CBK(name) int name()
+#define SIGNATURE_OF_CBK(name) int32_t name()
 typedef SIGNATURE_OF_CBK(cbk);
 SIGNATURE_OF_CBK(callbackFunction)
 {
@@ -22,7 +24,7 @@ SIGNATURE_OF_CBK(callbackFunction)
     return 0;
 }
 
-#define SIGNATURE_OF_SET_CBK(functionName) int functionName(cbk *)
+#define SIGNATURE_OF_SET_CBK(functionName) int32_t functionName(cbk *)
 typedef SIGNATURE_OF_SET_CBK(setCbkType);
 SIGNATURE_OF_SET_CBK(setCbkStub)
 {
@@ -31,7 +33,7 @@ SIGNATURE_OF_SET_CBK(setCbkStub)
 }
 static setCbkType *setCbk = setCbkStub;
 
-#define SIGNATURE_OF_RUN_ALL_CALLBACKS(functionName) int functionName()
+#define SIGNATURE_OF_RUN_ALL_CALLBACKS(functionName) int32_t functionName()
 typedef SIGNATURE_OF_RUN_ALL_CALLBACKS(runAllCallbacksType);
 SIGNATURE_OF_RUN_ALL_CALLBACKS(runAllCallbacksStub)
 {
@@ -41,19 +43,40 @@ SIGNATURE_OF_RUN_ALL_CALLBACKS(runAllCallbacksStub)
 static runAllCallbacksType *runAllCallbacks = runAllCallbacksStub;
 
 HMODULE libModule = nullptr;
-int loadLibrary(std::string& path) {
-    // TODO: check file changes
-    if (libModule != nullptr) {
-        std::cout << "Library was already loaded" << std::endl;
-        return 0;
-    }
-    // TODO: free the library if it exists
-    // TODO: create a working copy of the library
-    // load the dll
+fs::file_time_type loadedDllWriteTime;
 
-    libModule = LoadLibraryA(path.c_str());
+int32_t libraryUpkeep(fs::path& path) {
+    {
+        // return if library is up to date
+        std::error_code errorCode;
+        fs::file_time_type lastDllWriteTime = fs::last_write_time(path, errorCode);
+        // NOTE: error value is os specific
+        if (errorCode.value()) {
+            // TODO: use custom logger or print to stderr
+            std::cout << "ERROR " << errorCode.value() << ": " << errorCode.message() << std::endl;
+            std::cout << path << std::endl;
+            errorCode.clear();
+            return -1;
+        }
+        bool dllHasChanged = lastDllWriteTime != loadedDllWriteTime;
+        if (!dllHasChanged) {
+            return 1;
+        }
+        loadedDllWriteTime = lastDllWriteTime;
+    }
+
+    // handle reload
+    FreeLibrary(libModule);
+    // TODO: error handle
+
+    // TODO: delete the working copy i
+    // TODO: create a working copy of the library
+    // TODO: ensure a temp folder exists
+
+    libModule = LoadLibraryA((LPCSTR)path.generic_string().c_str());
     if (!libModule)
     {
+        std::cout << path << "Could not be loaded!" << std::endl;
         uint32_t errorCode = GetLastError();
         if (errorCode == 126)
         {
@@ -88,7 +111,7 @@ int loadLibrary(std::string& path) {
     }
     setCbk(callbackFunction);
 
-    // run all callbacks in the dll
+    // DEBUG: run all callbacks in the dll
     runAllCallbacks = reinterpret_cast<runAllCallbacksType*>(GetProcAddress(libModule, "runAllCallbacks"));
     if (!runAllCallbacks)
     {
@@ -99,17 +122,22 @@ int loadLibrary(std::string& path) {
     }
     runAllCallbacks();
 
-    // TODO: ensure a temp folder exists
     return 1;
+}
+
+int32_t libraryUpkeep(std::string& path) {
+    fs::path fsPath = path;
+    return libraryUpkeep(fsPath);
 }
 int main()
 {
-    std::string pathToLibrary = std::string("../../../SharedCode/bin/Debug/SharedCode.dll");
+    // FIXME: current directories can ruin you. Ensure it's set properlly when using relative paths.
+    //fs::current_path();
+    std::string pathToLibrary = std::string("../SharedCode/bin/Debug/SharedCode.dll");
     std::cout << "Hello. I am the main app, the god of all the libraries" << std::endl;
-    loadLibrary(pathToLibrary);
     for (;;){
-        std::cout << "Tick!" << std::endl;
-        loadLibrary(pathToLibrary);
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        std::cout << "Library Upkeep!" << std::endl;
+        libraryUpkeep(pathToLibrary);
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     }
 }

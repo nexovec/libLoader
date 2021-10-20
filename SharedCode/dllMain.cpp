@@ -35,7 +35,7 @@ BOOL WINAPI DllMain(
     switch (fdwReason)
     {
     case DLL_PROCESS_ATTACH:
-        std::cout << "I am the dll and I am more loaded than the Kenyan president." << std::endl;
+        std::cout << "I am the dll. I am more loaded than the Kenyan president and women love me." << std::endl;
         break;
 
     case DLL_THREAD_ATTACH:
